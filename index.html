@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Document</title>
+</head>
+
+<body>
+    <div>
+        <div>
+            <canvas id="drawing-area"></canvas>
+        </div>
+        <div>
+            <button onclick="moveUp()">up</button>
+            <button onclick="moveDown()">down</button>
+            <button onclick="moveLeft()">left</button>
+            <button onclick="moveRight()">right</button>
+            <button onclick="zoomIn()">zoom in</button>
+            <button onclick="zoomOut()">zoom out</button>
+            <input type="number" name="direction-factor" id="direction-factor" value="0.01">df</input>
+            <input type="number" name="zoom-factor" id="zoom-factor" value="0.1">zf</input>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("drawing-area");
+        const df = document.getElementById("direction-factor");
+        const zf = document.getElementById("zoom-factor");
+
+        canvas.width = 200;
+        canvas.height = 200;
+
+        // rendering lock
+        let rendering = false;
+
+        let x = -2.5, xsize = 3.5, y = -2.0, ysize = 3.5;
+
+        const ctx = canvas.getContext("2d");
+        render();
+
+        function render() {
+            if (rendering) return;
+            rendering = true;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            var color = ctx.createImageData(1, 1);
+            var d = color.data;
+
+            const max_iterations = 20;
+
+
+            for (let ac = 0; ac < canvas.width; ac++) {
+                for (let bc = 0; bc < canvas.height; bc++) {
+                    let counter = 0;
+                    let az = 0, bz = 0;
+
+                    // scaled down versions of ac and bc to between -2 and 2
+                    const as = map(ac, 0, canvas.width, x, x + xsize);
+                    const bs = map(bc, 0, canvas.height, y, y + ysize);
+
+                    while (counter < max_iterations) {
+                        const [an, bn] = computeNextInput(az, bz, as, bs);
+                        if (Math.abs(an * an + bn * bn) > 4) {
+                            break;
+                        }
+
+                        az = an;
+                        bz = bn;
+
+                        counter++;
+                    }
+
+                    // didn't blow up to infinity.
+                    if (counter == max_iterations) {
+                        d[0] = 0;
+                        d[1] = 0;
+                        d[2] = 0;
+                        d[3] = 255;
+                        ctx.putImageData(color, ac, bc);
+                    } else {
+                        const val = map(Math.sqrt(counter), 0, Math.sqrt(max_iterations), 0, 255);
+                        d[0] = 0;
+                        d[1] = val;
+                        d[2] = 0;
+                        d[3] = 255;
+                        ctx.putImageData(color, ac, bc);
+                    }
+
+                }
+            }
+
+            rendering = false;
+        }
+
+        function map(num, min_x, max_x, to_min_x, to_max_x) {
+            const scale_factor = (to_max_x - to_min_x) / (max_x - min_x)
+            const main_diff = num - min_x;
+
+            const scaled_x = to_min_x + scale_factor * main_diff;
+            return scaled_x;
+        }
+
+        function computeNextInput(a, b, ac, bc) {
+            // fc(z) = z^2 + c
+            const new_a = (a * a) - (b * b) + ac;
+            const new_b = (2 * a * b) + bc;
+
+            return [new_a, new_b];
+        }
+
+        function moveUp() {
+            y += +df.value;
+            render();
+        }
+
+        function moveDown() {
+            y -= +df.value;
+            render();
+        }
+
+        function moveLeft() {
+            x -= +df.value;
+            render();
+        }
+
+        function moveRight() {
+            x += +df.value;
+            render();
+        }
+
+        function zoomIn() {
+            xsize -= +zf.value;
+            ysize -= +zf.value;
+            render();
+        }
+
+        function zoomOut() {
+            xsize += +zf.value;
+            ysize += +zf.value;
+            render();
+        }
+
+    </script>
+</body>
+
+</html>
